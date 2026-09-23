@@ -224,7 +224,7 @@ app.post('/api/certificates/issue', requireAdmin, async (req, res) => {
     const payload = canonicalPayload({ studentName, studentEmail, course, institution, issueDate, grade });
     const documentHash = sha256(payload);
     const row = { id: makeCertificateId(), studentName, studentEmail, course, institution, issueDate, grade, status: 'ACTIVE', documentHash, blockchainHash: ethers.keccak256(ethers.toUtf8Bytes(documentHash)), sourceType: 'GENERATED', studentPasswordHash: hashPassword(studentPassword) };
-    await anchorCertificate(row, req); row.studentPasswordSet = true; saveData();
+    await anchorCertificate(row, req); data.certificates.push(row); row.studentPasswordSet = true; saveData();
     log(row.id, 'ISSUE', 'SUCCESS', req); res.status(201).json(publicCertificate(row));
   } catch (e) { console.error(e); res.status(500).json({ error: safeError(e) }); }
 });
@@ -243,6 +243,7 @@ app.post('/api/certificates/upload', requireAdmin, async (req, res) => {
     fs.writeFileSync(saved, raw);
     const row = { id, studentName, studentEmail, course, institution, issueDate, grade, status: 'ACTIVE', documentHash, blockchainHash: ethers.keccak256(ethers.toUtf8Bytes(documentHash)), sourceType: 'UPLOADED', fileName: safe, fileMime, filePath: path.relative(__dirname, saved), studentPasswordHash: hashPassword(studentPassword) };
     try { await anchorCertificate(row, req); } catch (e) { fs.rmSync(saved, { force: true }); throw e; }
+    data.certificates.push(row);
     row.studentPasswordSet = true; saveData();
     log(row.id, 'UPLOAD', 'SUCCESS', req); res.status(201).json(publicCertificate(row));
   } catch (e) { console.error(e); res.status(500).json({ error: safeError(e) }); }
