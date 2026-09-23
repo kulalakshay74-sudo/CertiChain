@@ -45,3 +45,49 @@ body{background:#f4f7fc;color:var(--ink)}
 }
 /* Keep the institutional logo crisp and contained at every breakpoint */
 .side-logo img,.college-logo img{display:block;width:100%;height:100%;object-fit:contain;background:#fff}
+
+
+/* Final responsive/UI stabilization */
+html,body{width:100%;min-width:0;overflow-x:hidden}
+.app-shell{width:100%;min-width:0}
+.sidebar{flex:0 0 242px;min-width:0}
+.main{min-width:0;width:auto;overflow:hidden}
+.topbar{min-width:0;overflow:hidden}
+.college-brand{min-width:0;overflow:hidden}
+.college-brand>div{min-width:0}
+.college-brand strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dashboard-grid,.dashboard-main,.dashboard-side,.stats,.quick-grid{min-width:0}
+.stat{min-width:0;width:100%}
+.stat>div{min-width:0}
+.stat small,.stat strong{overflow:hidden;text-overflow:ellipsis}
+.recent-card,.featured-card,.blockchain-card,.activity-card{min-width:0}
+.recent-card .table-wrap{min-height:70px}
+.recent-card table{min-width:620px}
+@media(min-width:1400px){
+  .dashboard-grid{grid-template-columns:minmax(0,1fr) minmax(340px,405px)}
+  .stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(max-width:1350px) and (min-width:901px){
+  .sidebar{flex-basis:220px;width:220px}
+  .main{padding-left:18px;padding-right:18px}
+  .topbar{margin-left:-18px;margin-right:-18px;padding-left:20px;padding-right:20px}
+  .dashboard-grid{grid-template-columns:minmax(0,1fr) 330px}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stat{min-height:105px}
+  .college-brand>div:nth-of-type(2) strong{font-size:20px}
+  .college-brand>div:nth-of-type(4) strong{font-size:20px}
+}
+@media(max-width:1050px) and (min-width:801px){
+  .dashboard-grid{grid-template-columns:1fr}
+  .dashboard-side{display:grid;grid-template-columns:1fr 1fr}
+  .featured-card{grid-column:1/-1}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:800px){
+  .main{overflow:hidden}
+  .topbar{overflow:hidden}
+  .college-brand{max-width:70%}
+  .dashboard-grid{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:560px){.stats{grid-template-columns:1fr}}
