@@ -91,3 +91,12 @@ html,body{width:100%;min-width:0;overflow-x:hidden}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:560px){.stats{grid-template-columns:1fr}}
+
+/* Certificate/dashboard final polish */
+.dashboard-main,.dashboard-side,.recent-card,.featured-card{min-width:0}
+#recentRows:empty{display:none}
+.featured-qr{width:64px;height:64px;object-fit:contain;border:1px solid #d9e2f2;background:#fff;padding:3px}
+#featuredCertificate{position:relative}
+.certificate-preview{min-height:420px}
+@media(max-width:1200px){.dashboard-grid{grid-template-columns:minmax(0,1fr)}.dashboard-side{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.featured-card{grid-column:1/-1}}
+@media(max-width:700px){.dashboard-side{grid-template-columns:1fr}.stats{grid-template-columns:1fr}.quick-grid{grid-template-columns:1fr 1fr}}
