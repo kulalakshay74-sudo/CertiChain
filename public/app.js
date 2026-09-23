@@ -166,7 +166,7 @@ async function loadStats() {
     $('#sVerifications').textContent = stats.verifications ?? 0;
     $('#sStudents').textContent = stats.students ?? 0;
     const rows = await api('/api/certificates');
-    renderRecentDashboard(rows);
+    renderRecentDashboard(Array.isArray(rows) ? rows : []);
     renderFeaturedDashboard(rows);
     renderActivityDashboard();
   } catch (error) {
