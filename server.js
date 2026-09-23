@@ -206,6 +206,16 @@ app.get('/api/student/certificates', requireUser, (req, res) => {
   if (req.user.role !== 'student') return res.status(403).json({ error: 'Student access only.' });
   res.json(data.certificates.filter(c => (c.studentEmail || '').toLowerCase() === req.user.email.toLowerCase()).map(publicCertificate));
 });
+app.get('/api/certificates/search', requireAdmin, (req, res) => {
+  const q = String(req.query.q || '').trim().toLowerCase();
+  if (!q) return res.json([]);
+  const rows = data.certificates.filter(c =>
+    String(c.id || '').toLowerCase().includes(q) ||
+    String(c.studentName || '').toLowerCase().includes(q)
+  ).slice(0, 20);
+  res.json(rows.map(publicCertificate));
+});
+
 app.get('/api/certificates/:id', (req, res) => {
   const row = findCertificate(req.params.id);
   if (!row) return res.status(404).json({ error: 'Certificate not found' });
