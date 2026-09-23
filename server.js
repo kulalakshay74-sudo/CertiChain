@@ -40,7 +40,7 @@ if (!ISSUER_PRIVATE_KEY || !/^0x[0-9a-fA-F]{64}$/.test(ISSUER_PRIVATE_KEY)) thro
 const app = express();
 app.disable('x-powered-by');
 app.use(cors());
-app.use(express.json({ limit: '20mb' }));
+app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -66,7 +66,7 @@ function saveData() {
 function findCertificate(id) { return data.certificates.find(c => c.id === id); }
 function publicCertificate(c) {
   if (!c) return c;
-  const { studentPasswordHash, ...safe } = c;
+  const { studentPasswordHash, filePath, ...safe } = c;
   return safe;
 }
 function safeError(e) { return e?.shortMessage || e?.reason || e?.message || 'Request failed'; }
@@ -135,7 +135,8 @@ function validateUpload(fileName, mime, bytes) {
   const allowedMime = new Set(['application/pdf', 'image/png', 'image/jpeg', 'image/webp']);
   const ext = path.extname(fileName || '').toLowerCase();
   const allowedExt = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.webp']);
-  if (!allowedMime.has(mime) || !allowedExt.has(ext)) throw new Error('Only PDF, PNG, JPG/JPEG and WEBP certificates are allowed.');
+  if (!allowedExt.has(ext)) throw new Error('Only PDF, PNG, JPG/JPEG and WEBP certificates are allowed.');
+  if (mime && !allowedMime.has(mime)) throw new Error('Unsupported certificate file type. Use PDF, PNG, JPG/JPEG or WEBP.');
   if (!bytes.length || bytes.length > 15 * 1024 * 1024) throw new Error('Certificate file must be between 1 byte and 15 MB.');
 }
 function pdfBuffer(row, qrDataUrl) {
