@@ -141,23 +141,65 @@ function validateUpload(fileName, mime, bytes) {
 }
 function pdfBuffer(row, qrDataUrl) {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    const doc = new PDFDocument({ size: 'A4', margin: 0 });
     const chunks = [];
     doc.on('data', c => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
-    doc.fontSize(30).fillColor('#3328a8').text('CERTICHAIN', { align: 'center' });
-    doc.fontSize(12).fillColor('#666').text('BLOCKCHAIN-VERIFIED DIGITAL CERTIFICATE', { align: 'center' });
-    doc.moveDown(2).fontSize(18).fillColor('#111').text('Certificate of Achievement', { align: 'center' });
-    doc.moveDown().fontSize(24).fillColor('#3328a8').text(row.studentName, { align: 'center' });
-    doc.moveDown().fontSize(13).fillColor('#333').text(`has successfully completed ${row.course}`, { align: 'center' });
-    doc.moveDown(.6).text(`Issued by ${row.institution} on ${row.issueDate}`, { align: 'center' });
-    if (row.grade) doc.text(`Result / Grade: ${row.grade}`, { align: 'center' });
-    doc.moveDown(2).fontSize(11).fillColor('#555').text(`Certificate ID: ${row.id}`, { align: 'center' });
-    doc.text(`Blockchain transaction: ${row.txHash}`, { align: 'center' });
-    doc.text(`SHA-256 fingerprint: ${row.documentHash}`, { align: 'center', width: 500 });
-    try { doc.image(Buffer.from(qrDataUrl.split(',')[1], 'base64'), 225, 570, { width: 140 }); } catch {}
-    doc.fontSize(9).fillColor('#777').text('Scan the QR code to verify this certificate against the blockchain.', 70, 720, { align: 'center', width: 460 });
+
+    const W = 595.28, H = 841.89;
+    const navy = '#082b68', blue = '#2f70d9', gold = '#f4c542', ink = '#13284b', muted = '#64748b';
+
+    // Clean certificate background and double border.
+    doc.rect(0, 0, W, H).fill('#fdfefe');
+    doc.lineWidth(2).strokeColor('#d7e2f2').rect(22, 22, W - 44, H - 44).stroke();
+    doc.lineWidth(1).strokeColor('#9eb8dc').rect(32, 32, W - 64, H - 64).stroke();
+
+    // Decorative blue corner ribbons.
+    doc.save().fillColor(blue).polygon([0,92],[112,72],[118,91],[0,116]).fill().restore();
+    doc.save().fillColor(blue).polygon([W,0],[W-72,0],[W-52,125],[W,112]).fill().restore();
+    doc.save().fillColor(blue).polygon([0,H-118],[72,H-132],[92,H],[0,H]).fill().restore();
+
+    // Gold seal.
+    doc.circle(W - 78, 86, 28).fillColor(gold).fill();
+    doc.circle(W - 78, 86, 22).lineWidth(2).strokeColor('#9b7610').stroke();
+    doc.fontSize(16).fillColor(navy).text('✓', W - 84, 78, { width: 12, align: 'center' });
+
+    doc.fontSize(10).font('Helvetica-Bold').fillColor(blue).text('CERTICHAIN', 0, 82, { align:'center', width:W, characterSpacing:2 });
+    doc.fontSize(27).font('Times-Bold').fillColor(navy).text('CERTIFICATE OF COMPLETION', 0, 125, { align:'center', width:W });
+    doc.fontSize(11).font('Helvetica').fillColor(muted).text('This is to certify that', 0, 176, { align:'center', width:W });
+
+    doc.fontSize(27).font('Times-Bold').fillColor(navy).text(row.studentName || 'Student', 60, 202, { align:'center', width:W-120 });
+    doc.fontSize(11).font('Helvetica').fillColor(muted).text('has successfully completed the requirements for', 0, 247, { align:'center', width:W });
+    doc.fontSize(17).font('Helvetica-Bold').fillColor(ink).text(row.course || 'Course / Qualification', 50, 272, { align:'center', width:W-100 });
+    doc.fontSize(11).font('Helvetica').fillColor(muted).text('at', 0, 309, { align:'center', width:W });
+    doc.fontSize(13).font('Helvetica-Bold').fillColor(navy).text('Srinivas Institute Of Technology, Valachil', 40, 335, { align:'center', width:W-80 });
+
+    // Metadata row.
+    doc.lineWidth(1).strokeColor('#d7e2f2').moveTo(58, 385).lineTo(W-58, 385).stroke();
+    const cols = [75, 258, 430];
+    const labels = ['Certificate ID','Issue Date','Grade'];
+    const values = [row.id || '—', row.issueDate || '—', row.grade || '—'];
+    labels.forEach((label,i) => {
+      doc.fontSize(9).font('Helvetica').fillColor(muted).text(label, cols[i], 405, { width:100, align:'center' });
+      doc.fontSize(10).font('Helvetica-Bold').fillColor(ink).text(values[i], cols[i]-10, 423, { width:120, align:'center' });
+    });
+
+    // QR verification block.
+    try {
+      const qr = Buffer.from(String(qrDataUrl).split(',')[1], 'base64');
+      doc.image(qr, 62, 510, { width:72, height:72 });
+    } catch {}
+    doc.fontSize(9).font('Helvetica').fillColor(muted).text('Verify with CertiChain', 145, 526);
+    doc.fontSize(9).text('Blockchain anchored credential', 145, 542);
+    doc.fontSize(8).fillColor('#7a8799').text('Scan the QR code to verify this certificate.', 145, 559);
+
+    // Signature / issuer.
+    doc.fontSize(10).font('Times-Italic').fillColor(navy).text('Authorized Signatory', W-205, 538, { width:140, align:'center' });
+    doc.lineWidth(1).strokeColor('#9eb8dc').moveTo(W-210, 559).lineTo(W-70, 559).stroke();
+    doc.fontSize(9).font('Helvetica-Bold').fillColor(ink).text('CertiChain', W-205, 566, { width:140, align:'center' });
+
+    doc.fontSize(8).font('Helvetica').fillColor('#7a8799').text('Secure • Verified • On Blockchain', 0, H-56, { align:'center', width:W });
     doc.end();
   });
 }
