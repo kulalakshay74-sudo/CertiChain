@@ -272,26 +272,73 @@ app.post('/api/certificates/:id/revoke', requireAdmin, async (req, res) => {
 
 app.post('/api/verify', async (req, res) => {
   try {
-    const { certificateId, documentData, studentName, studentEmail, course, institution, issueDate, grade } = req.body || {};
+    const { certificateId, documentData } = req.body || {};
     if (!certificateId) return res.status(400).json({ error: 'Certificate ID is required.' });
-    const local = findCertificate(certificateId);
-    if (!local) { log(certificateId, 'VERIFY', 'NOT_FOUND', req); return res.json({ valid: false, status: 'NOT_FOUND', message: 'No certificate with this ID exists.' }); }
-    let chain;
-    try { chain = await registry.getCertificate(certificateId); } catch { log(certificateId, 'VERIFY', 'BLOCKCHAIN_NOT_FOUND', req); return res.json({ valid: false, status: 'BLOCKCHAIN_NOT_FOUND', message: 'Certificate is not present on the blockchain.' }); }
-    let submittedHash;
-    if (documentData) submittedHash = sha256(dataUrlToBuffer(documentData));
-    else submittedHash = sha256(canonicalPayload({ studentName: studentName ?? local.studentName, studentEmail: studentEmail ?? local.studentEmail, course: course ?? local.course, institution: institution ?? local.institution, issueDate: issueDate ?? local.issueDate, grade: grade ?? local.grade }));
-    const submittedBlockchainHash = ethers.keccak256(ethers.toUtf8Bytes(submittedHash));
-    const hashMatches = chain[0].toLowerCase() === submittedBlockchainHash.toLowerCase();
-    const localMatches = local.documentHash.toLowerCase() === submittedHash.toLowerCase();
-    const revoked = chain[3];
-    const valid = hashMatches && localMatches && !revoked;
-    const status = valid ? 'AUTHENTIC' : (revoked ? 'REVOKED' : 'TAMPERED');
-    log(certificateId, 'VERIFY', status, req);
-    res.json({ valid, status, certificateId, certificate: { studentName: local.studentName, studentEmail: local.studentEmail, course: local.course, institution: local.institution, issueDate: local.issueDate, grade: local.grade, sourceType: local.sourceType }, checks: { databaseHashMatch: localMatches, blockchainHashMatch: hashMatches, blockchainRevoked: revoked, issuer: chain[1], issuedAt: Number(chain[2]) } });
-  } catch (e) { res.status(500).json({ error: safeError(e) }); }
-});
 
+    const local = findCertificate(certificateId);
+    if (!local) {
+      log(certificateId, 'VERIFY', 'NOT_FOUND', req);
+      return res.json({ valid: false, status: 'NOT_FOUND', message: 'No certificate with this ID exists.' });
+    }
+
+    let chain;
+    try {
+      chain = await registry.getCertificate(certificateId);
+    } catch {
+      log(certificateId, 'VERIFY', 'BLOCKCHAIN_NOT_FOUND', req);
+      return res.json({ valid: false, status: 'BLOCKCHAIN_NOT_FOUND', message: 'Certificate is not present on the blockchain.' });
+    }
+
+    const storedBlockchainHash = String(chain[0]).toLowerCase();
+    const localBlockchainHash = String(local.blockchainHash).toLowerCase();
+    const blockchainRecordMatches = storedBlockchainHash === localBlockchainHash;
+    const revoked = Boolean(chain[3]);
+
+    // ID-only verification checks the database record against the blockchain record.
+    // If the original document is supplied, also verify its exact SHA-256 bytes.
+    let documentChecked = false;
+    let documentMatches = true;
+    if (documentData) {
+      documentChecked = true;
+      const submittedHash = sha256(dataUrlToBuffer(documentData));
+      documentMatches = submittedHash.toLowerCase() === String(local.documentHash).toLowerCase();
+    }
+
+    const valid = blockchainRecordMatches && documentMatches && !revoked;
+    const status = valid ? 'AUTHENTIC' : (revoked ? 'REVOKED' : (documentChecked && !documentMatches ? 'TAMPERED' : 'BLOCKCHAIN_MISMATCH'));
+
+    log(certificateId, 'VERIFY', status, req);
+
+    res.json({
+      valid,
+      status,
+      certificateId,
+      message: valid
+        ? (documentChecked ? 'Certificate ID and supplied document match the blockchain record.' : 'Certificate ID matches the blockchain record.')
+        : 'Certificate verification failed.',
+      certificate: {
+        studentName: local.studentName,
+        studentEmail: local.studentEmail,
+        course: local.course,
+        institution: local.institution,
+        issueDate: local.issueDate,
+        grade: local.grade,
+        sourceType: local.sourceType
+      },
+      checks: {
+        databaseHashMatch: documentChecked ? documentMatches : true,
+        blockchainHashMatch: blockchainRecordMatches,
+        blockchainRevoked: revoked,
+        documentChecked,
+        issuer: chain[1],
+        issuedAt: Number(chain[2])
+      }
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: safeError(e) });
+  }
+});
 app.get('/api/certificates/:id/pdf', async (req, res) => {
   try {
     const row = findCertificate(req.params.id); if (!row) return res.status(404).send('Certificate not found');
