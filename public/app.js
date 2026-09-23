@@ -53,7 +53,7 @@ function showPage(page) {
   const title = $('#pageTitle');
   if (title) title.textContent = titles[page] || 'CertiChain';
 
-  if (page === 'dashboard') { loadHealth(); loadStats(); }
+  if (page === 'dashboard') { refreshDashboard(); }
   if (page === 'certificates') loadCertificates();
   if (page === 'audit') loadAudit();
   if (page === 'student') loadStudent();
@@ -165,13 +165,39 @@ async function loadStats() {
     $('#sRevoked').textContent = stats.revoked ?? 0;
     $('#sVerifications').textContent = stats.verifications ?? 0;
     $('#sStudents').textContent = stats.students ?? 0;
-    const rows = await api('/api/certificates');
-    renderRecentDashboard(Array.isArray(rows) ? rows : []);
-    renderFeaturedDashboard(rows);
-    renderActivityDashboard();
+    return stats;
   } catch (error) {
-    toast(error.message);
+    toast('Dashboard statistics: '+error.message);
+    return null;
   }
+}
+
+async function refreshDashboard() {
+  if (role !== 'admin') return;
+  const [healthResult, statsResult, certResult, auditResult] = await Promise.allSettled([
+    loadHealth(),
+    loadStats(),
+    api('/api/certificates'),
+    api('/api/audit')
+  ]);
+  if (certResult.status === 'fulfilled') {
+    const rows = Array.isArray(certResult.value) ? certResult.value : [];
+    certificates = rows;
+    renderRecentDashboard(rows);
+    renderFeaturedDashboard(rows);
+  } else {
+    renderRecentDashboard([]);
+    toast('Could not load dashboard certificates: '+(certResult.reason?.message || 'Request failed.'));
+  }
+  if (auditResult.status === 'fulfilled') renderActivityRows(auditResult.value);
+}
+
+function renderActivityRows(rows) {
+  const box = $('#recentActivity');
+  if (!box) return;
+  box.innerHTML = (Array.isArray(rows) ? rows : []).slice(0,5).map(r =>
+    '<div class="activity-item"><span class="activity-dot"></span><div><b>'+esc(r.action)+'</b><span>'+esc(r.certificateId || 'System event')+'</span><small>'+esc(new Date(r.createdAt).toLocaleString())+'</small></div></div>'
+  ).join('') || '<div class="muted">No recent activity.</div>';
 }
 
 function renderRecentDashboard(rows) {
@@ -196,6 +222,8 @@ function renderFeaturedDashboard(rows) {
   $('#featuredId').textContent = row.id || '—';
   $('#featuredDate').textContent = row.issueDate || '—';
   $('#featuredGrade').textContent = row.grade || '—';
+  const featuredQr = $('#featuredQr');
+  if (featuredQr) featuredQr.src = '/api/certificates/'+encodeURIComponent(row.id)+'/qr';
   const pdf = $('#featuredPdf');
   if (pdf) { pdf.href = '/api/certificates/'+encodeURIComponent(row.id)+'/pdf'; pdf.classList.remove('disabled-link'); }
   const print = $('#featuredPrint');
@@ -205,16 +233,9 @@ function renderFeaturedDashboard(rows) {
 }
 
 async function renderActivityDashboard() {
-  const box = $('#recentActivity');
-  if (!box || role !== 'admin') return;
-  try {
-    const rows = await api('/api/audit');
-    box.innerHTML = rows.slice(0,5).map(r =>
-      '<div class="activity-item"><span class="activity-dot"></span><div><b>'+esc(r.action)+'</b><span>'+esc(r.certificateId || 'System event')+'</span><small>'+esc(new Date(r.createdAt).toLocaleString())+'</small></div></div>'
-    ).join('') || '<div class="muted">No recent activity.</div>';
-  } catch (error) {
-    box.innerHTML = '<div class="muted">'+esc(error.message)+'</div>';
-  }
+  if (role !== 'admin') return;
+  try { renderActivityRows(await api('/api/audit')); }
+  catch (error) { const box=$('#recentActivity'); if(box) box.innerHTML='<div class="muted">'+esc(error.message)+'</div>'; }
 }
 
 function setButtonBusy(button, busy, label) {
@@ -262,7 +283,8 @@ async function submitIssue(event) {
     setToday(form);
     toast('Certificate issued and anchored to blockchain.');
     await loadCertificates();
-    await loadStats();
+    await refreshDashboard();
+    showPage('dashboard');
   } catch (error) {
     result.innerHTML = '<div class="result failure">'+esc(error.message)+'</div>';
   } finally { setButtonBusy(button,false); }
@@ -293,7 +315,8 @@ async function submitUpload(event) {
     if (form.institution) form.institution.value = 'Srinivas Institute of Technology';
     setToday(form);
     await loadCertificates();
-    await loadStats();
+    await refreshDashboard();
+    showPage('dashboard');
   } catch (error) {
     result.innerHTML = '<div class="result failure">'+esc(error.message)+'</div>';
   } finally { setButtonBusy(button,false); }
@@ -417,6 +440,7 @@ function setToday(form) {
 function bindForms() {
   $('#loginForm')?.addEventListener('submit', login);
   $('#logout')?.addEventListener('click', logout);
+  $('#dashboardRefresh')?.addEventListener('click', refreshDashboard);
   $('#issueForm')?.addEventListener('submit', submitIssue);
   $('#uploadForm')?.addEventListener('submit', submitUpload);
   $('#verifyForm')?.addEventListener('submit', submitVerify);
