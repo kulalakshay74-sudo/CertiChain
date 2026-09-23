@@ -1,0 +1,25 @@
+{
+  "name": "certichain",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Blockchain-Based Digital Certificate Verification & Fraud Prevention System",
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "start": "node server.js",
+    "compile": "hardhat compile",
+    "deploy": "node scripts/deploy.js",
+    "test": "hardhat test"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "ethers": "^6.13.5",
+    "qrcode": "^1.5.4",
+    "pdfkit": "^0.16.0",
+    "nodemailer": "^7.0.6"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.19"
+  }
+}

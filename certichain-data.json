@@ -1,0 +1,13 @@
+{
+  "certificates": [],
+  "auditLogs": [
+    {
+      "id": "3d0683da-a3c8-4367-bf7d-f0809ef2ad28",
+      "certificateId": "CERT-2026-8EB91DD6",
+      "action": "UPLOAD",
+      "result": "SUCCESS",
+      "createdAt": "2026-09-23T15:57:55.533Z",
+      "ip": "::ffff:127.0.0.1"
+    }
+  ]
+}
