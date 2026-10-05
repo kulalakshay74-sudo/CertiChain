@@ -204,48 +204,48 @@ function pdfBuffer(row, qrDataUrl) {
     // Srinivas Group logo — drawn directly into the PDF so it is always visible.
     // This matches the supplied logo: black border, SRINIVAS GROUP heading,
     // blue emblem field, yellow S mark, and SAMAGRA GNANA / ESTD. 1988.
-    const lx = W / 2 - 38, ly = 30, lw = 76, lh = 91;
+    const lx = W / 2 - 25, ly = 34, lw = 50, lh = 60;
     doc.save();
     doc.rect(lx, ly, lw, lh).fillColor('#ffffff').fill();
     doc.lineWidth(1.4).strokeColor('#111111').rect(lx, ly, lw, lh).stroke();
-    doc.fontSize(5.2).font('Helvetica-Bold').fillColor('#111111')
-      .text('SRINIVAS GROUP', lx + 3, ly + 5, { width: lw - 6, align: 'center' });
-    doc.rect(lx + 6, ly + 18, lw - 12, 62).fillColor('#10105e').fill();
+    doc.fontSize(3.5).font('Helvetica-Bold').fillColor('#111111')
+      .text('SRINIVAS GROUP', lx + 2, ly + 3, { width: lw - 4, align: 'center' });
+    doc.rect(lx + 4, ly + 12, lw - 8, 38).fillColor('#10105e').fill();
     // Stylized yellow S / emblem.
-    doc.fontSize(42).font('Times-Bold').fillColor('#f4d21a')
-      .text('S', lx + 16, ly + 20, { width: 42, align: 'center' });
-    doc.circle(lx + 51, ly + 39, 4).fillColor('#f7df43').fill();
-    doc.polygon([lx + 53, ly + 47, lx + 65, ly + 58, lx + 54, ly + 69, lx + 43, ly + 58])
+    doc.fontSize(29).font('Times-Bold').fillColor('#f4d21a')
+      .text('S', lx + 11, ly + 12, { width: 28, align: 'center' });
+    doc.circle(lx + 34, ly + 27, 2.5).fillColor('#f7df43').fill();
+    doc.polygon([lx + 35, ly + 30, lx + 44, ly + 38, lx + 35, ly + 46, lx + 27, ly + 38])
       .fillColor('#f1cc16').fill();
-    doc.fontSize(4.2).font('Helvetica-Bold').fillColor('#111111')
-      .text('SAMAGRA GNANA', lx + 3, ly + 82, { width: lw - 6, align: 'center' });
-    doc.fontSize(3.2).font('Helvetica-Bold').fillColor('#111111')
-      .text('ESTD. 1988', lx + 3, ly + 87, { width: lw - 6, align: 'center' });
+    doc.fontSize(2.8).font('Helvetica-Bold').fillColor('#111111')
+      .text('SAMAGRA GNANA', lx + 2, ly + 51, { width: lw - 4, align: 'center' });
+    doc.fontSize(2.3).font('Helvetica-Bold').fillColor('#111111')
+      .text('ESTD. 1988', lx + 2, ly + 55, { width: lw - 4, align: 'center' });
     doc.restore();
 
-    doc.fontSize(10).font('Helvetica-Bold').fillColor(blue)
-      .text('CERTICHAIN', 0, 24, { align:'center', width:W, characterSpacing:2 });
+    doc.fontSize(9).font('Helvetica-Bold').fillColor(blue)
+      .text('CERTICHAIN', 0, 18, { align:'center', width:W, characterSpacing:2 });
 
     doc.fontSize(27).font('Times-Bold').fillColor(navy)
-      .text('CERTIFICATE OF COMPLETION', 0, 102, { align:'center', width:W });
+      .text('CERTIFICATE OF COMPLETION', 0, 108, { align:'center', width:W });
 
     doc.fontSize(11).font('Helvetica').fillColor(muted)
-      .text('This is to certify that', 0, 151, { align:'center', width:W });
+      .text('This is to certify that', 0, 158, { align:'center', width:W });
 
     doc.fontSize(29).font('Times-Bold').fillColor(navy)
-      .text(row.studentName || 'Student', 80, 175, { align:'center', width:W-160 });
+      .text(row.studentName || 'Student', 80, 182, { align:'center', width:W-160 });
 
     doc.fontSize(11).font('Helvetica').fillColor(muted)
-      .text('has successfully completed the requirements for', 0, 217, { align:'center', width:W });
+      .text('has successfully completed the requirements for', 0, 224, { align:'center', width:W });
 
     doc.fontSize(18).font('Helvetica-Bold').fillColor(ink)
-      .text(row.course || 'Course / Qualification', 80, 244, { align:'center', width:W-160 });
+      .text(row.course || 'Course / Qualification', 80, 251, { align:'center', width:W-160 });
 
     doc.fontSize(11).font('Helvetica').fillColor(muted)
-      .text('at', 0, 277, { align:'center', width:W });
+      .text('at', 0, 284, { align:'center', width:W });
 
     doc.fontSize(14).font('Helvetica-Bold').fillColor(navy)
-      .text(row.institution || 'Srinivas Institute Of Technology, Valachil', 60, 301, { align:'center', width:W-120 });
+      .text(row.institution || 'Srinivas Institute Of Technology, Valachil', 60, 308, { align:'center', width:W-120 });
 
     // Metadata row: every important certificate detail is visible on the PDF.
     doc.lineWidth(1).strokeColor('#d7e2f2').moveTo(70, 342).lineTo(W-70, 342).stroke();
