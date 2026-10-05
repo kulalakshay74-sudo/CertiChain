@@ -201,13 +201,27 @@ function pdfBuffer(row, qrDataUrl) {
     doc.save().fillColor(blue).polygon([W,0],[790,0],[810,154],[W,142]).fill().restore();
     doc.save().fillColor(blue).polygon([0,70],[112,52],[120,73],[0,94]).fill().restore();
 
-    // College logo from the existing Srinivas Institute/Srinivas Group SVG.
-    try {
-      const svg = fs.readFileSync(logoPath, 'utf8');
-      SVGtoPDF(doc, svg, W / 2 - 28, 32, { width: 56, height: 67 });
-    } catch (e) {
-      doc.fontSize(9).font('Helvetica-Bold').fillColor(navy).text('SRINIVAS GROUP', W / 2 - 55, 45, { width: 110, align: 'center' });
-    }
+    // Srinivas Group logo — drawn directly into the PDF so it is always visible.
+    // This matches the supplied logo: black border, SRINIVAS GROUP heading,
+    // blue emblem field, yellow S mark, and SAMAGRA GNANA / ESTD. 1988.
+    const lx = W / 2 - 38, ly = 30, lw = 76, lh = 91;
+    doc.save();
+    doc.rect(lx, ly, lw, lh).fillColor('#ffffff').fill();
+    doc.lineWidth(1.4).strokeColor('#111111').rect(lx, ly, lw, lh).stroke();
+    doc.fontSize(5.2).font('Helvetica-Bold').fillColor('#111111')
+      .text('SRINIVAS GROUP', lx + 3, ly + 5, { width: lw - 6, align: 'center' });
+    doc.rect(lx + 6, ly + 18, lw - 12, 62).fillColor('#10105e').fill();
+    // Stylized yellow S / emblem.
+    doc.fontSize(42).font('Times-Bold').fillColor('#f4d21a')
+      .text('S', lx + 16, ly + 20, { width: 42, align: 'center' });
+    doc.circle(lx + 51, ly + 39, 4).fillColor('#f7df43').fill();
+    doc.polygon([lx + 53, ly + 47, lx + 65, ly + 58, lx + 54, ly + 69, lx + 43, ly + 58])
+      .fillColor('#f1cc16').fill();
+    doc.fontSize(4.2).font('Helvetica-Bold').fillColor('#111111')
+      .text('SAMAGRA GNANA', lx + 3, ly + 82, { width: lw - 6, align: 'center' });
+    doc.fontSize(3.2).font('Helvetica-Bold').fillColor('#111111')
+      .text('ESTD. 1988', lx + 3, ly + 87, { width: lw - 6, align: 'center' });
+    doc.restore();
 
     doc.fontSize(10).font('Helvetica-Bold').fillColor(blue)
       .text('CERTICHAIN', 0, 24, { align:'center', width:W, characterSpacing:2 });
