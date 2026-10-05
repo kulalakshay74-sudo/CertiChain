@@ -160,8 +160,8 @@ function verificationUrl(req, id) {
   const base = (process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
   return `${base}/?verify=${encodeURIComponent(id)}`;
 }
-async function makeQr(req, id) {
-  const row = findCertificate(id);
+async function makeQr(req, rowOrId) {
+  const row = typeof rowOrId === 'string' ? findCertificate(rowOrId) : rowOrId;
   if (!row) throw new Error('Certificate not found.');
   return QRCode.toDataURL(encryptQrPayload(row), { width: 360, margin: 2, errorCorrectionLevel: 'M' });
 }
@@ -256,7 +256,7 @@ async function anchorCertificate(row, req) {
   row.contractAddress = deployment.address;
   row.createdAt = new Date().toISOString();
   row.verificationUrl = verificationUrl(req, row.id);
-  row.qrDataUrl = await makeQr(req, row.id);
+  row.qrDataUrl = await makeQr(req, row);
   saveData();
   return row;
 }
@@ -353,8 +353,8 @@ app.post('/api/certificates/issue', requireAdmin, async (req, res) => {
 
 app.post('/api/certificates/upload', requireAdmin, async (req, res) => {
   try {
-    const { fileName, fileMime, fileData, studentName, studentEmail = '', studentPassword = '', course, institution, issueDate, grade = '' } = req.body || {};
-    if (!fileData || !studentName || !course || !institution || !issueDate) return res.status(400).json({ error: 'Certificate file, student name, course, institution and issue date are required.' });
+    const { fileName, fileMime, fileData, studentName, studentEmail = '', studentPassword = '', course, institution = 'Srinivas Institute of Technology', issueDate, grade = '' } = req.body || {};
+    if (!fileData || !studentName || !course || !institution || !issueDate) return res.status(400).json({ error: 'Certificate file and extracted student name, course, institution and issue date are required.' });
     if (!studentEmail || !studentPassword || studentPassword.length < 8) return res.status(400).json({ error: 'Student email and a student portal password of at least 8 characters are required.' });
     const raw = dataUrlToBuffer(fileData);
     validateUpload(fileName, fileMime, raw);
