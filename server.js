@@ -86,6 +86,41 @@ const registry = new ethers.Contract(deployment.address, deployment.abi, wallet)
 function sha256(value) { return crypto.createHash('sha256').update(value).digest('hex'); }
 function makeCertificateId() { return `CERT-${new Date().getFullYear()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`; }
 function canonicalPayload(d) { return JSON.stringify({ studentName: d.studentName, studentEmail: d.studentEmail || '', course: d.course, institution: d.institution, issueDate: d.issueDate, grade: d.grade || '' }); }
+function qrEncryptionKey() {
+  return crypto.createHash('sha256').update('CertiChain QR Encryption v1|' + SESSION_SECRET).digest();
+}
+function encryptQrPayload(row) {
+  const payload = {
+    v: 1,
+    type: 'CERTICHAIN_CERTIFICATE',
+    certificateId: row.id,
+    name: row.studentName || '',
+    email: row.studentEmail || '',
+    course: row.course || '',
+    institution: row.institution || 'Srinivas Institute Of Technology, Valachil',
+    issuedDate: row.issueDate || '',
+    grade: row.grade || ''
+  };
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', qrEncryptionKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(JSON.stringify(payload), 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return 'CCQR1.' + [iv, tag, encrypted].map(b => b.toString('base64url')).join('.');
+}
+function decryptQrPayload(token) {
+  const parts = String(token || '').split('.');
+  if (parts.length !== 4 || parts[0] !== 'CCQR1') throw new Error('This is not a valid CertiChain encrypted QR code.');
+  const iv = Buffer.from(parts[1], 'base64url');
+  const tag = Buffer.from(parts[2], 'base64url');
+  const encrypted = Buffer.from(parts[3], 'base64url');
+  if (iv.length !== 12 || tag.length !== 16 || !encrypted.length) throw new Error('Invalid CertiChain QR payload.');
+  const decipher = crypto.createDecipheriv('aes-256-gcm', qrEncryptionKey(), iv);
+  decipher.setAuthTag(tag);
+  const plain = Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
+  const payload = JSON.parse(plain);
+  if (payload.type !== 'CERTICHAIN_CERTIFICATE' || payload.v !== 1 || !payload.certificateId) throw new Error('Unsupported CertiChain QR payload.');
+  return payload;
+}
 function hashPassword(password) { return crypto.scryptSync(password, SESSION_SECRET, 64).toString('hex'); }
 function passwordMatches(password, hash) {
   if (!password || !hash) return false;
@@ -125,7 +160,11 @@ function verificationUrl(req, id) {
   const base = (process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
   return `${base}/?verify=${encodeURIComponent(id)}`;
 }
-async function makeQr(req, id) { return QRCode.toDataURL(verificationUrl(req, id), { width: 360, margin: 2 }); }
+async function makeQr(req, id) {
+  const row = findCertificate(id);
+  if (!row) throw new Error('Certificate not found.');
+  return QRCode.toDataURL(encryptQrPayload(row), { width: 360, margin: 2, errorCorrectionLevel: 'M' });
+}
 function dataUrlToBuffer(dataUrl) {
   const match = /^data:[^;]+;base64,(.+)$/i.exec(dataUrl || '');
   if (!match) throw new Error('Invalid base64 file data.');
@@ -265,8 +304,38 @@ app.get('/api/certificates/:id', (req, res) => {
   res.json(publicCertificate(row));
 });
 app.get('/api/certificates/:id/qr', async (req, res) => {
-  try { const row = findCertificate(req.params.id); if (!row) return res.status(404).send('Certificate not found'); res.type('png'); res.send(await QRCode.toBuffer(verificationUrl(req, row.id), { width: 360, margin: 2 })); }
-  catch (e) { res.status(500).send(safeError(e)); }
+  try {
+    const row = findCertificate(req.params.id);
+    if (!row) return res.status(404).send('Certificate not found');
+    res.type('png');
+    res.send(await QRCode.toBuffer(encryptQrPayload(row), { width: 360, margin: 2, errorCorrectionLevel: 'M' }));
+  } catch (e) { res.status(500).send(safeError(e)); }
+});
+app.post('/api/qr/decode', requireAdmin, (req, res) => {
+  try {
+    const payload = decryptQrPayload(req.body?.qrData);
+    const row = findCertificate(payload.certificateId);
+    if (!row) {
+      log(payload.certificateId, 'QR_VERIFY', 'NOT_FOUND', req);
+      return res.status(404).json({ error: 'The encrypted QR is valid, but its certificate is not registered in this CertiChain database.' });
+    }
+    const matches =
+      row.studentName === payload.name &&
+      (row.studentEmail || '') === payload.email &&
+      row.course === payload.course &&
+      row.institution === payload.institution &&
+      row.issueDate === payload.issuedDate &&
+      (row.grade || '') === payload.grade;
+    if (!matches) {
+      log(row.id, 'QR_VERIFY', 'DATA_MISMATCH', req);
+      return res.status(409).json({ error: 'QR data does not match the registered certificate. Possible tampering detected.' });
+    }
+    log(row.id, 'QR_VERIFY', 'SUCCESS', req);
+    res.json({ valid: true, certificate: publicCertificate(row), message: 'Encrypted CertiChain QR verified successfully.' });
+  } catch (e) {
+    log(null, 'QR_VERIFY', 'INVALID_QR', req);
+    res.status(400).json({ error: safeError(e) });
+  }
 });
 
 app.post('/api/certificates/issue', requireAdmin, async (req, res) => {
