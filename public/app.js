@@ -498,3 +498,17 @@ function bindForms() {
       const id = share.dataset.share;
       const url = location.origin+'/?verify='+encodeURIComponent(id);
       try {
+        await navigator.clipboard.writeText(url);
+        toast('Verification link copied.');
+      } catch (error) {
+        toast('Could not copy verification link.');
+      }
+    }
+  });
+}
+
+bindNavigation();
+bindForms();
+setToday($('#issueForm'));
+setToday($('#uploadForm'));
+boot();
