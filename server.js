@@ -183,106 +183,103 @@ function pdfBuffer(row, qrDataUrl) {
     const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 0 });
     const SVGtoPDF = require('svg-to-pdfkit');
     const chunks = [];
-    doc.on('data', c => chunks.push(c));
+    doc.on('data', chunk => chunks.push(chunk));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
     const W = 841.89, H = 595.28;
-    const navy = '#082b68', blue = '#2f70d9', gold = '#f4c542', ink = '#13284b', muted = '#64748b';
-    const logoPath = path.join(__dirname, 'public', 'images.svg');
+    const navy = '#082b68';
+    const blue = '#2f70d9';
+    const ink = '#13284b';
+    const muted = '#64748b';
 
-    // Premium white certificate with a subtle double border.
-    doc.rect(0, 0, W, H).fill('#fdfefe');
-    doc.lineWidth(2).strokeColor('#d7e2f2').rect(5, 5, W - 10, H - 10).stroke();
+    // Clean certificate canvas and double border.
+    doc.rect(0, 0, W, H).fill('#ffffff');
+    doc.lineWidth(1.8).strokeColor('#d7e2f2').rect(5, 5, W - 10, H - 10).stroke();
     doc.lineWidth(1).strokeColor('#9eb8dc').rect(20, 20, W - 40, H - 40).stroke();
 
-    // Decorative blue corner ribbons matching the reference certificate.
+    // Decorative corner ribbons.
     doc.save().fillColor(blue).polygon([0,452],[112,432],[126,595],[82,595],[0,482]).fill().restore();
     doc.save().fillColor(blue).polygon([W,0],[790,0],[810,154],[W,142]).fill().restore();
     doc.save().fillColor(blue).polygon([0,70],[112,52],[120,73],[0,94]).fill().restore();
 
-    // Srinivas Group logo — drawn directly into the PDF so it is always visible.
-    // This matches the supplied logo: black border, SRINIVAS GROUP heading,
-    // blue emblem field, yellow S mark, and SAMAGRA GNANA / ESTD. 1988.
-    const lx = W / 2 - 25, ly = 34, lw = 50, lh = 60;
-    doc.save();
-    doc.rect(lx, ly, lw, lh).fillColor('#ffffff').fill();
-    doc.lineWidth(1.4).strokeColor('#111111').rect(lx, ly, lw, lh).stroke();
-    doc.fontSize(3.5).font('Helvetica-Bold').fillColor('#111111')
-      .text('SRINIVAS GROUP', lx + 2, ly + 3, { width: lw - 4, align: 'center' });
-    doc.rect(lx + 4, ly + 12, lw - 8, 38).fillColor('#10105e').fill();
-    // Stylized yellow S / emblem.
-    doc.fontSize(29).font('Times-Bold').fillColor('#f4d21a')
-      .text('S', lx + 11, ly + 12, { width: 28, align: 'center' });
-    doc.circle(lx + 34, ly + 27, 2.5).fillColor('#f7df43').fill();
-    doc.polygon([lx + 35, ly + 30, lx + 44, ly + 38, lx + 35, ly + 46, lx + 27, ly + 38])
-      .fillColor('#f1cc16').fill();
-    doc.fontSize(2.8).font('Helvetica-Bold').fillColor('#111111')
-      .text('SAMAGRA GNANA', lx + 2, ly + 51, { width: lw - 4, align: 'center' });
-    doc.fontSize(2.3).font('Helvetica-Bold').fillColor('#111111')
-      .text('ESTD. 1988', lx + 2, ly + 55, { width: lw - 4, align: 'center' });
-    doc.restore();
-
+    // Header: brand, exact Srinivas Group SVG logo, then title with deliberate spacing.
     doc.fontSize(9).font('Helvetica-Bold').fillColor(blue)
-      .text('CERTICHAIN', 0, 18, { align:'center', width:W, characterSpacing:2 });
+      .text('CERTICHAIN', 0, 22, { width: W, align: 'center', characterSpacing: 2 });
 
-    doc.fontSize(27).font('Times-Bold').fillColor(navy)
-      .text('CERTIFICATE OF COMPLETION', 0, 108, { align:'center', width:W });
+    try {
+      const svg = fs.readFileSync(path.join(__dirname, 'public', 'images.svg'), 'utf8');
+      // The repository SVG is the Srinivas Group logo. Render the full artwork,
+      // rather than drawing a simplified substitute.
+      SVGtoPDF(doc, svg, W / 2 - 31, 38, { width: 62, height: 74 });
+    } catch (e) {
+      doc.fontSize(7).font('Helvetica-Bold').fillColor(navy)
+        .text('SRINIVAS GROUP', W / 2 - 50, 58, { width: 100, align: 'center' });
+    }
 
-    doc.fontSize(11).font('Helvetica').fillColor(muted)
-      .text('This is to certify that', 0, 158, { align:'center', width:W });
+    doc.fontSize(26).font('Times-Bold').fillColor(navy)
+      .text('CERTIFICATE OF COMPLETION', 0, 126, { width: W, align: 'center' });
 
-    doc.fontSize(29).font('Times-Bold').fillColor(navy)
-      .text(row.studentName || 'Student', 80, 182, { align:'center', width:W-160 });
+    // Main certificate statement.
+    doc.fontSize(10.5).font('Helvetica').fillColor(muted)
+      .text('This is to certify that', 0, 170, { width: W, align: 'center' });
 
-    doc.fontSize(11).font('Helvetica').fillColor(muted)
-      .text('has successfully completed the requirements for', 0, 224, { align:'center', width:W });
+    doc.fontSize(30).font('Times-Bold').fillColor(navy)
+      .text(row.studentName || 'Student', 80, 194, { width: W - 160, align: 'center' });
+
+    doc.fontSize(10.5).font('Helvetica').fillColor(muted)
+      .text('has successfully completed the requirements for', 0, 238, { width: W, align: 'center' });
 
     doc.fontSize(18).font('Helvetica-Bold').fillColor(ink)
-      .text(row.course || 'Course / Qualification', 80, 251, { align:'center', width:W-160 });
+      .text(row.course || 'Course / Qualification', 80, 263, { width: W - 160, align: 'center' });
 
-    doc.fontSize(11).font('Helvetica').fillColor(muted)
-      .text('at', 0, 284, { align:'center', width:W });
+    doc.fontSize(10.5).font('Helvetica').fillColor(muted)
+      .text('at', 0, 292, { width: W, align: 'center' });
 
     doc.fontSize(14).font('Helvetica-Bold').fillColor(navy)
-      .text(row.institution || 'Srinivas Institute Of Technology, Valachil', 60, 308, { align:'center', width:W-120 });
+      .text(row.institution || 'Srinivas Institute Of Technology, Valachil', 55, 316, { width: W - 110, align: 'center' });
 
-    // Metadata row: every important certificate detail is visible on the PDF.
-    doc.lineWidth(1).strokeColor('#d7e2f2').moveTo(70, 342).lineTo(W-70, 342).stroke();
-    const cols = [150, 330, 510, 690];
-    const labels = ['Certificate ID','Issue Date','Grade / Result','Status'];
+    // Details row.
+    doc.lineWidth(1).strokeColor('#d7e2f2').moveTo(65, 353).lineTo(W - 65, 353).stroke();
+
+    const cols = [155, 350, 545, 705];
+    const labels = ['Certificate ID', 'Issue Date', 'Grade / Result', 'Status'];
     const values = [row.id || '—', row.issueDate || '—', row.grade || '—', row.status || 'ACTIVE'];
-    labels.forEach((label,i) => {
+
+    labels.forEach((label, i) => {
       doc.fontSize(8.5).font('Helvetica').fillColor(muted)
-        .text(label, cols[i]-55, 357, { width:110, align:'center' });
+        .text(label, cols[i] - 60, 368, { width: 120, align: 'center' });
       doc.fontSize(10).font('Helvetica-Bold').fillColor(ink)
-        .text(String(values[i]), cols[i]-70, 373, { width:140, align:'center' });
+        .text(String(values[i]), cols[i] - 72, 384, { width: 144, align: 'center' });
     });
 
     // QR verification block.
     try {
       const qr = Buffer.from(String(qrDataUrl).split(',')[1], 'base64');
-      doc.image(qr, 74, 426, { width:72, height:72 });
+      doc.image(qr, 76, 430, { width: 68, height: 68 });
     } catch {}
-    doc.fontSize(9).font('Helvetica-Bold').fillColor(navy)
-      .text('Verify with CertiChain', 160, 438);
-    doc.fontSize(8.5).font('Helvetica').fillColor(muted)
-      .text('Blockchain anchored credential', 160, 454);
-    doc.fontSize(8).fillColor('#7a8799')
-      .text('Scan the QR code to verify authenticity.', 160, 469);
 
-    // Issuer / signature area.
+    doc.fontSize(9).font('Helvetica-Bold').fillColor(navy)
+      .text('Verify with CertiChain', 158, 438);
+    doc.fontSize(8.5).font('Helvetica').fillColor(muted)
+      .text('Blockchain anchored credential', 158, 455);
+    doc.fontSize(8).font('Helvetica').fillColor('#7a8799')
+      .text('Scan the QR code to verify authenticity.', 158, 470);
+
+    // Authorized signature.
     doc.fontSize(9).font('Times-Italic').fillColor(navy)
-      .text('Authorized Signatory', W-220, 437, { width:140, align:'center' });
-    doc.lineWidth(1).strokeColor('#9eb8dc').moveTo(W-220, 462).lineTo(W-80, 462).stroke();
+      .text('Authorized Signatory', W - 225, 438, { width: 150, align: 'center' });
+    doc.lineWidth(1).strokeColor('#9eb8dc').moveTo(W - 225, 463).lineTo(W - 75, 463).stroke();
     doc.fontSize(9).font('Helvetica-Bold').fillColor(ink)
-      .text(row.institution || 'CertiChain Issuer', W-245, 469, { width:190, align:'center' });
+      .text(row.institution || 'CertiChain Issuer', W - 250, 471, { width: 200, align: 'center' });
 
     doc.fontSize(8).font('Helvetica').fillColor('#7a8799')
-      .text('Secure • Verified • On Blockchain', 0, H-31, { align:'center', width:W });
+      .text('Secure • Verified • On Blockchain', 0, H - 31, { width: W, align: 'center' });
+
     doc.end();
   });
 }
+
 async function sendEmail(row, pdf) {
   if (!row.studentEmail) throw new Error('Student email is required.');
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASSWORD) throw new Error('SMTP is not configured. Set SMTP_HOST, SMTP_USER and SMTP_PASSWORD in .env.');
