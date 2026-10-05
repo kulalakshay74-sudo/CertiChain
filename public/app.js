@@ -160,11 +160,11 @@ async function loadStats() {
   if (role !== 'admin') return;
   try {
     const stats = await api('/api/stats');
-    $('#sTotal').textContent = stats.total ?? 0;
-    $('#sActive').textContent = stats.active ?? 0;
-    $('#sRevoked').textContent = stats.revoked ?? 0;
-    $('#sVerifications').textContent = stats.verifications ?? 0;
-    $('#sStudents').textContent = stats.students ?? 0;
+    if ($('#sTotal')) $('#sTotal').textContent = stats.total ?? 0;
+    if ($('#sActive')) $('#sActive').textContent = stats.active ?? 0;
+    if ($('#sRevoked')) $('#sRevoked').textContent = stats.revoked ?? 0;
+    if ($('#sVerifications')) $('#sVerifications').textContent = stats.verifications ?? 0;
+    if ($('#sStudents')) $('#sStudents').textContent = stats.students ?? 0;
     return stats;
   } catch (error) {
     toast('Dashboard statistics: '+error.message);
@@ -498,20 +498,3 @@ function bindForms() {
       const id = share.dataset.share;
       const url = location.origin+'/?verify='+encodeURIComponent(id);
       try {
-        await navigator.clipboard.writeText(url);
-        toast('Verification link copied.');
-      } catch { toast(url); }
-    }
-  });
-}
-
-function init() {
-  setToday($('#issueForm'));
-  setToday($('#uploadForm'));
-  bindNavigation();
-  bindForms();
-  boot();
-}
-
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once:true });
-else init();
