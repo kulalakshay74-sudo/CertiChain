@@ -100,3 +100,13 @@ html,body{width:100%;min-width:0;overflow-x:hidden}
 .certificate-preview{min-height:420px}
 @media(max-width:1200px){.dashboard-grid{grid-template-columns:minmax(0,1fr)}.dashboard-side{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.featured-card{grid-column:1/-1}}
 @media(max-width:700px){.dashboard-side{grid-template-columns:1fr}.stats{grid-template-columns:1fr}.quick-grid{grid-template-columns:1fr 1fr}}
+
+/* Smart certificate extraction / QR verification */
+.upload-drop{display:flex;flex-direction:column;gap:8px;padding:22px;border:2px dashed #c9d8ef;border-radius:16px;background:#f8fbff;cursor:pointer}
+.upload-drop input{margin-top:4px}
+.upload-drop small,.extract-status,.qr-verify-box small{color:#64748b}
+.extract-status{margin:12px 0;padding:11px 14px;border-radius:10px;background:#f4f7fb;font-size:14px}
+.qr-verify-box{padding:18px;border:1px solid #dbe5f3;border-radius:14px;background:linear-gradient(135deg,#f7fbff,#f8f6ff)}
+.qr-verify-box h3{margin:0 0 6px;color:#102b55}
+.qr-verify-box p{margin:0 0 12px;color:#64748b}
+.form-card hr{border:0;border-top:1px solid #e2e8f0;margin:20px 0}
