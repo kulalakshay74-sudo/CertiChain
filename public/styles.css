@@ -132,3 +132,10 @@ html,body{width:100%;min-width:0;overflow-x:hidden}
 .nav i svg{width:22px;height:22px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .cc-logo svg{width:38px;height:38px;display:block}
 @media(max-width:900px){.main{padding-top:0!important}.nav i{margin:0 auto}.sidebar .nav svg{width:22px;height:22px}}
+
+
+/* Hard override for the remaining top offset in the authenticated app */
+#app.app-shell{align-items:flex-start!important;min-height:100vh}
+#app.app-shell>.main{margin-block:0!important;padding-block-start:0!important;position:relative;top:0}
+#app.app-shell>.sidebar{margin-block:0!important;align-self:stretch}
+#app.app-shell>.main>.topbar{margin-block-start:0!important;top:0}
