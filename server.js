@@ -381,10 +381,19 @@ app.post('/api/certificates/issue', requireAdmin, async (req, res) => {
     const { studentName, studentEmail = '', studentPassword = '', course, institution, issueDate, grade = '' } = req.body || {};
     if (!studentName || !course || !institution || !issueDate) return res.status(400).json({ error: 'Student name, course, institution and issue date are required.' });
     if (!studentEmail || !studentPassword || studentPassword.length < 8) return res.status(400).json({ error: 'Student email and a student portal password of at least 8 characters are required.' });
-    const payload = canonicalPayload({ studentName, studentEmail, course, institution, issueDate, grade });
-    const documentHash = sha256(payload);
-    const row = { id: makeCertificateId(), studentName, studentEmail, course, institution, issueDate, grade, status: 'ACTIVE', documentHash, blockchainHash: ethers.keccak256(ethers.toUtf8Bytes(documentHash)), sourceType: 'GENERATED', studentPasswordHash: hashPassword(studentPassword) };
-    await anchorCertificate(row, req); data.certificates.push(row); row.studentPasswordSet = true; saveData();
+    // Generate the exact PDF first, then anchor its SHA-256 hash. The QR payload
+    // contains certificate metadata/ID only, so this does not create a hash cycle.
+    const row = { id: makeCertificateId(), studentName, studentEmail, course, institution, issueDate, grade, status: 'ACTIVE', sourceType: 'GENERATED', studentPasswordHash: hashPassword(studentPassword) };
+    const issuedPdf = await pdfBuffer(row, await makeQr(req, row));
+    row.documentHash = sha256(issuedPdf);
+    row.blockchainHash = ethers.keccak256(ethers.toUtf8Bytes(row.documentHash));
+    await anchorCertificate(row, req);
+    const issuedPdfPath = path.join(UPLOAD_DIR, `${row.id}-issued.pdf`);
+    fs.writeFileSync(issuedPdfPath, issuedPdf);
+    row.fileName = `${row.id}.pdf`;
+    row.fileMime = 'application/pdf';
+    row.filePath = path.relative(__dirname, issuedPdfPath);
+    data.certificates.push(row); row.studentPasswordSet = true; saveData();
     log(row.id, 'ISSUE', 'SUCCESS', req); res.status(201).json(publicCertificate(row));
   } catch (e) { console.error(e); res.status(500).json({ error: safeError(e) }); }
 });
@@ -491,14 +500,22 @@ app.post('/api/verify', async (req, res) => {
 app.get('/api/certificates/:id/pdf', async (req, res) => {
   try {
     const row = findCertificate(req.params.id); if (!row) return res.status(404).send('Certificate not found');
-    const qr = await makeQr(req, row.id); const pdf = await pdfBuffer(row, qr);
+    // Return the exact bytes that were hashed and anchored at issuance.
+    // Older records without a stored PDF retain the legacy dynamic-PDF behavior.
+    const pdf = row.filePath && fs.existsSync(path.join(__dirname, row.filePath))
+      ? fs.readFileSync(path.join(__dirname, row.filePath))
+      : await pdfBuffer(row, await makeQr(req, row.id));
     res.setHeader('Content-Type', 'application/pdf'); res.setHeader('Content-Disposition', `attachment; filename="${row.id}.pdf"`); res.send(pdf);
   } catch (e) { res.status(500).send(safeError(e)); }
 });
 app.post('/api/certificates/:id/email', requireAdmin, async (req, res) => {
   try {
     const row = findCertificate(req.params.id); if (!row) return res.status(404).json({ error: 'Certificate not found' });
-    row.verificationUrl = verificationUrl(req, row.id); const pdf = await pdfBuffer(row, await makeQr(req, row.id)); await sendEmail(row, pdf);
+    row.verificationUrl = verificationUrl(req, row.id);
+    const pdf = row.filePath && fs.existsSync(path.join(__dirname, row.filePath))
+      ? fs.readFileSync(path.join(__dirname, row.filePath))
+      : await pdfBuffer(row, await makeQr(req, row.id));
+    await sendEmail(row, pdf);
     log(row.id, 'EMAIL', 'SENT', req); res.json({ ok: true, message: `Certificate emailed to ${row.studentEmail}` });
   } catch (e) { res.status(500).json({ error: safeError(e) }); }
 });
