@@ -261,12 +261,105 @@ async function fileData(file) {
 // Certificate document extraction + encrypted QR helpers
 function setFormValue(form,name,value){const el=form?.querySelector('[name="'+name+'"]');if(el&&value!==undefined&&value!==null&&String(value).trim())el.value=String(value).trim();}
 function normalizeExtractedDate(v){const s=String(v||'').trim();let m=s.match(/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})\b/);if(m)return m[3]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[1]).padStart(2,'0');m=s.match(/\b(\d{4})[\/.-](\d{1,2})[\/.-](\d{1,2})\b/);return m?m[1]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[3]).padStart(2,'0'):'';}
-function parseCertificateText(text){const joined=String(text||'').replace(/\r/g,'').replace(/[ \t]+/g,' ').split('\n').map(x=>x.trim()).filter(Boolean).join('\n');const out={};const email=joined.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);if(email)out.studentEmail=email[0];const pick=ps=>{for(const p of ps){const m=joined.match(p);if(m?.[1])return m[1].replace(/\s+/g,' ').trim().replace(/[|,:;]+$/,'');}return '';};out.studentName=pick([/(?:student\s*name|recipient\s*name|candidate\s*name)\s*[:\-]\s*([^\n]+)/i,/this\s+is\s+to\s+certify\s+that\s*\n\s*([^\n]+)/i,/this\s+is\s+to\s+certify\s+that\s+(.+?)\s+has\s+successfully/i]);out.course=pick([/(?:course|qualification|program|programme|degree)\s*[:\-]\s*([^\n]+)/i,/completed\s+(?:the\s+requirements\s+for|requirements\s+for)\s*\n\s*([^\n]+)/i,/requirements\s+for\s+(.+?)\s+at\s+/i]);out.grade=pick([/(?:grade|result|score|percentage|cgpa)\s*[:\-]\s*([^\n]+)/i]);out.institution=pick([/(?:institution|college|university|institute)\s*[:\-]\s*([^\n]+)/i,/at\s*\n\s*([^\n]+)/i])||'Srinivas Institute of Technology';const date=pick([/(?:issue\s*date|issued\s*date|date\s*of\s*issue|date)\s*[:\-]\s*([^\n]+)/i]);out.issueDate=normalizeExtractedDate(date);if(!out.issueDate){const dm=joined.match(/\b(?:\d{1,2}[\/.-]\d{1,2}[\/.-]\d{4}|\d{4}[\/.-]\d{1,2}[\/.-]\d{1,2})\b/);out.issueDate=normalizeExtractedDate(dm?.[0]);}return out;}
+function parseCertificateText(text){
+  const normalized=String(text||'').replace(/\r/g,'\n').replace(/[ \t]+/g,' ').replace(/\u00a0/g,' ').split('\n').map(line=>line.trim()).filter(Boolean);
+  const joined=normalized.join('\n');
+  const flat=normalized.join(' ');
+  const out={};
+  const clean=value=>String(value||'').replace(/^[\s:|–—-]+|[\s|,;]+$/g,'').replace(/\s+/g,' ').trim().replace(/\s+(?:has successfully|who has|for having|upon completion|in recognition of).*/i,'').replace(/[.]+$/,'').trim();
+  const pick=patterns=>{
+    for(const pattern of patterns){
+      const match=joined.match(pattern)||flat.match(pattern);
+      if(match&&match[1]){
+        const value=clean(match[1]);
+        if(value&&!/^(?:the undersigned|this certificate|certificate of achievement|certificate of completion)$/i.test(value))return value;
+      }
+    }
+    return '';
+  };
+  const labelled=labels=>{
+    const label=labels.join('|');
+    return [
+      new RegExp('(?:^|\\n)\\s*(?:'+label+')\\s*[:\\-–]?\\s*([^\\n]+)','i'),
+      new RegExp('(?:^|\\n)\\s*(?:'+label+')\\s*[:\\-–]?\\s*\\n\\s*([^\\n]+)','i')
+    ];
+  };
+  out.studentName=pick([
+    ...labelled(['student\\s*name','recipient\\s*name','candidate\\s*name','learner\\s*name','name\\s*of\\s*(?:the\\s*)?student','presented\\s*to','awarded\\s*to']),
+    /this\s+is\s+to\s+certify\s+that\s+(.+?)(?=\s+(?:has\s+successfully|successfully\s+completed|for\s+having)\b|[.,\n]|$)/i,
+    /(?:hereby\s+)?certifies\s+that\s+(.+?)(?=\s+(?:has\s+successfully|successfully\s+completed|has\s+completed)\b|[.,\n]|$)/i,
+    /(?:certificate\s+is\s+)?(?:presented|awarded|issued)\s+to\s+(.+?)(?=\s+(?:for\s+successfully|in\s+recognition|for\s+completion)\b|[.,\n]|$)/i,
+    /successfully\s+completed\s+by\s+([A-Z][A-Z .'-]{2,60})(?=\s+(?:on|at|from|for)\b|[.,\n]|$)/i
+  ]);
+  if(out.studentName)out.studentName=out.studentName.replace(/^(?:mr|mrs|ms|miss|dr)\.?\s+/i,'').trim();
+  const email=flat.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  if(email)out.studentEmail=email[0].trim();
+  out.course=pick([
+    ...labelled(['course','course\\s*name','qualification','program','programme','degree','certification','training\\s*program']),
+    /successfully\s+completed\s+(?:the\s+)?(?:online\s+)?(?:course|program|programme|training|internship|certification)?\s*(?:on|in|of)?\s*([^.\n]{3,100}?)(?=\s+(?:conducted|offered|provided|by|from|at)\b|[.\n]|$)/i,
+    /completion\s+of\s+([^.\n]{3,100}?)(?=\s+(?:conducted|offered|provided|by|from|at)\b|[.\n]|$)/i,
+    /requirements\s+for\s+(.+?)(?=\s+at\b|[.\n]|$)/i
+  ]);
+  out.institution=pick([
+    ...labelled(['institution','college','university','institute','organization','organisation','issued\\s*by','awarded\\s*by']),
+    /(?:conducted|offered|provided)\s+by\s+([A-Z][A-Z0-9&.,'() -]{3,100})(?=[.\n]|$)/i,
+    /(?:at|from)\s+([A-Z][A-Z0-9&.,'() -]{4,100}(?:university|college|institute|academy|school|technologies|limited|ltd\.?))(?=[.,\n]|$)/i
+  ]);
+  out.grade=pick([...labelled(['grade','result','score','percentage','cgpa','gpa','marks'])]);
+  const dateText=pick([...labelled(['issue\\s*date','issued\\s*date','date\\s*of\\s*issue','date\\s*awarded','completion\\s*date','date'])]);
+  const normalizeDate=value=>{
+    const s=String(value||'').trim();
+    let m=s.match(/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})\b/);
+    if(m){const day=Number(m[1]),month=Number(m[2]),year=Number(m[3]);if(day>=1&&day<=31&&month>=1&&month<=12)return String(year)+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');}
+    m=s.match(/\b(\d{4})[\/.-](\d{1,2})[\/.-](\d{1,2})\b/);
+    if(m){const month=Number(m[2]),day=Number(m[3]);if(day>=1&&day<=31&&month>=1&&month<=12)return m[1]+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');}
+    const months={jan:1,january:1,feb:2,february:2,mar:3,march:3,apr:4,april:4,may:5,jun:6,june:6,jul:7,july:7,aug:8,august:8,sep:9,sept:9,september:9,oct:10,october:10,nov:11,november:11,dec:12,december:12};
+    m=s.match(/\b(\d{1,2})(?:st|nd|rd|th)?[\s,.-]+([A-Za-z]{3,9})[\s,.-]+(\d{4})\b/i)||s.match(/\b([A-Za-z]{3,9})[\s,.-]+(\d{1,2})(?:st|nd|rd|th)?[,]?[\s,.-]+(\d{4})\b/i);
+    if(m){let day,monthName,year;if(/^\d/.test(m[1])){day=Number(m[1]);monthName=m[2].toLowerCase();year=Number(m[3]);}else{monthName=m[1].toLowerCase();day=Number(m[2]);year=Number(m[3]);}const month=months[monthName]||months[monthName.slice(0,3)];if(month&&day>=1&&day<=31)return String(year)+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');}
+    return '';
+  };
+  out.issueDate=normalizeDate(dateText);
+  if(!out.issueDate){const m=flat.match(/\b(?:\d{1,2}[\/.-]\d{1,2}[\/.-]\d{4}|\d{4}[\/.-]\d{1,2}[\/.-]\d{1,2}|\d{1,2}(?:st|nd|rd|th)?[\s,.-]+[A-Za-z]{3,9}[\s,.-]+\d{4}|[A-Za-z]{3,9}[\s,.-]+\d{1,2}(?:st|nd|rd|th)?[,]?[\s,.-]+\d{4})\b/i);if(m)out.issueDate=normalizeDate(m[0]);}
+  return Object.fromEntries(Object.entries(out).filter(([,value])=>Boolean(value)));
+}
+
 async function renderPdfFirstPage(file){if(!window.pdfjsLib)throw new Error('PDF extraction library is not loaded. Refresh the page.');const data=new Uint8Array(await file.arrayBuffer());const pdf=await window.pdfjsLib.getDocument({data}).promise;const page=await pdf.getPage(1);const viewport=page.getViewport({scale:2});const canvas=document.createElement('canvas');canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;let text='';for(let n=1;n<=Math.min(pdf.numPages,3);n++){const p=await pdf.getPage(n),tc=await p.getTextContent();text+='\n'+tc.items.map(i=>i.str).join(' ');}return{canvas,text};}
 async function imageToCanvas(file){const url=URL.createObjectURL(file);try{const img=await new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=reject;i.src=url;});const scale=Math.min(2,1800/Math.max(img.naturalWidth,img.naturalHeight));const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);return canvas;}finally{URL.revokeObjectURL(url);}}
 function scanQrCanvas(canvas){if(!window.jsQR)return null;const ctx=canvas.getContext('2d',{willReadFrequently:true}),image=ctx.getImageData(0,0,canvas.width,canvas.height);return window.jsQR(image.data,image.width,image.height,{inversionAttempts:'attemptBoth'})?.data||null;}
 async function ocrCanvas(canvas,status){if(!window.Tesseract)throw new Error('OCR library is not loaded. Refresh the page.');if(status)status.textContent='Reading certificate text…';const result=await window.Tesseract.recognize(canvas,'eng',{logger:m=>{if(status&&m.status==='recognizing text')status.textContent='OCR '+Math.round((m.progress||0)*100)+'%…';}});return result.data.text||'';}
-async function extractCertificateFromFile(file,form,status){if(status)status.textContent='Analyzing certificate…';let canvas,text='';if(file.type==='application/pdf'||file.name.toLowerCase().endsWith('.pdf')){const r=await renderPdfFirstPage(file);canvas=r.canvas;text=r.text;}else canvas=await imageToCanvas(file);const qr=scanQrCanvas(canvas);if(qr?.startsWith('CCQR1.')){try{const decoded=await api('/api/qr/decode',{method:'POST',body:JSON.stringify({qrData:qr})});const c=decoded.certificate;[['studentName',c.studentName],['studentEmail',c.studentEmail],['course',c.course],['institution',c.institution],['issueDate',c.issueDate],['grade',c.grade]].forEach(([k,v])=>setFormValue(form,k,v));if(status)status.textContent='✓ Encrypted CertiChain QR verified — fields filled automatically.';return decoded;}catch(e){if(status)status.textContent='QR detected; using document text extraction…';}}if(!text.trim())text=await ocrCanvas(canvas,status);const fields=parseCertificateText(text);Object.entries(fields).forEach(([k,v])=>setFormValue(form,k,v));if(status)status.textContent='✓ Certificate content extracted. Review the fields before uploading.';return{fields};}
+async function extractCertificateFromFile(file,form,status){
+  if(status)status.textContent='Analyzing certificate…';
+  let canvas,text='';
+  const isPdf=file.type==='application/pdf'||file.name.toLowerCase().endsWith('.pdf');
+  if(isPdf){const rendered=await renderPdfFirstPage(file);canvas=rendered.canvas;text=rendered.text||'';}
+  else canvas=await imageToCanvas(file);
+  const qr=scanQrCanvas(canvas);
+  if(qr?.startsWith('CCQR1.')){
+    try{
+      const decoded=await api('/api/qr/decode',{method:'POST',body:JSON.stringify({qrData:qr})});
+      const certificate=decoded.certificate||{};
+      [['studentName',certificate.studentName],['studentEmail',certificate.studentEmail],['course',certificate.course],['institution',certificate.institution],['issueDate',certificate.issueDate],['grade',certificate.grade]].forEach(([key,value])=>setFormValue(form,key,value));
+      if(status)status.textContent='✓ CertiChain QR decoded. Review the populated fields before uploading.';
+      return decoded;
+    }catch(error){if(status)status.textContent='QR could not be decoded; trying certificate text…';}
+  }
+  let fields=parseCertificateText(text);
+  const requiredForAutoFill=['studentName','course','institution','issueDate'];
+  const missing=requiredForAutoFill.some(key=>!fields[key]);
+  if(!text.trim()||missing){
+    try{
+      const ocrText=await ocrCanvas(canvas,status);
+      const ocrFields=parseCertificateText(ocrText);
+      for(const [key,value] of Object.entries(ocrFields)){if(value&&!fields[key])fields[key]=value;}
+    }catch(error){if(!text.trim())throw error;}
+  }
+  Object.entries(fields).forEach(([key,value])=>setFormValue(form,key,value));
+  const missingFields=requiredForAutoFill.filter(key=>!fields[key]);
+  if(status)status.textContent=missingFields.length
+    ?'Extraction finished. Some fields could not be detected ('+missingFields.join(', ')+'). Please enter or correct them manually.'
+    :'✓ Certificate analyzed. Fields filled automatically where detected — review before uploading.';
+  return{fields};
+}
 async function scanQrFile(file){const canvas=file.type==='application/pdf'||file.name.toLowerCase().endsWith('.pdf')?(await renderPdfFirstPage(file)).canvas:await imageToCanvas(file);const qr=scanQrCanvas(canvas);if(!qr)throw new Error('No QR code was detected.');if(!qr.startsWith('CCQR1.'))throw new Error('This QR code is not an encrypted CertiChain QR.');return api('/api/qr/decode',{method:'POST',body:JSON.stringify({qrData:qr})});}
 
 
