@@ -123,3 +123,12 @@ html,body{width:100%;min-width:0;overflow-x:hidden}
 @media(max-width:1080px){.dashboard-grid{grid-template-columns:minmax(0,1fr)}.dashboard-side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.dashboard-side>.card{min-width:0}.featured-card{grid-row:span 2}}
 @media(max-width:900px){.sidebar{flex-basis:78px;min-height:100vh;padding:18px 10px}.side-brand{justify-content:center;padding:0;margin-bottom:18px}.side-brand>div:not(.side-logo){display:none}.sidebar .nav{font-size:0;text-align:center;padding:12px 5px}.sidebar .nav i{font-size:19px}.sidebar-bottom{margin-top:auto}.side-network>div,.side-contract,.side-tagline,.sidebar-bottom #logout{display:none}.main{padding:22px 20px;min-height:100vh}.dashboard-side{grid-template-columns:1fr 1fr}}
 @media(max-width:600px){.app-shell{display:block}.sidebar{display:none}.main{padding:16px;min-height:100vh}.topbar{align-items:flex-start;gap:12px;flex-direction:column}.college-brand{max-width:100%;flex-wrap:wrap}.dashboard-grid,.dashboard-side{display:grid;grid-template-columns:minmax(0,1fr)}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat{min-width:0}.stat small{overflow-wrap:anywhere}.welcome{height:auto;min-height:100px;padding:16px}.welcome-art{display:none}.feature-actions{flex-wrap:wrap}.feature-actions>*{flex:1 1 auto}.dashboard-side>.featured-card{grid-row:auto}}
+
+
+/* Final dashboard polish: flush top header and custom navigation iconography */
+.main{margin-top:0!important;margin-bottom:0!important;padding-top:0!important;align-self:stretch}
+.topbar{margin-top:0!important}
+.nav i{width:24px;min-width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-style:normal}
+.nav i svg{width:22px;height:22px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.cc-logo svg{width:38px;height:38px;display:block}
+@media(max-width:900px){.main{padding-top:0!important}.nav i{margin:0 auto}.sidebar .nav svg{width:22px;height:22px}}
