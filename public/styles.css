@@ -110,3 +110,16 @@ html,body{width:100%;min-width:0;overflow-x:hidden}
 .qr-verify-box h3{margin:0 0 6px;color:#102b55}
 .qr-verify-box p{margin:0 0 12px;color:#64748b}
 .form-card hr{border:0;border-top:1px solid #e2e8f0;margin:20px 0}
+
+
+/* CertiChain dashboard repair: prevent flex auto-margins from vertically centering the app */
+.app-shell{align-items:stretch;min-height:100vh}
+.sidebar{flex:0 0 250px;min-height:100vh;align-self:stretch}
+.main{margin:0 auto;align-self:stretch;min-width:0;min-height:100vh;width:100%;padding-top:24px}
+.stat-icon{display:grid;place-items:center;line-height:1}
+.stat-icon svg{display:block;width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.stat-blue .stat-icon,.stat-green .stat-icon,.stat-red .stat-icon,.stat-purple .stat-icon{color:#fff}
+@media(max-width:1280px){.dashboard-grid{grid-template-columns:minmax(0,1fr) 340px;gap:14px}.stat{gap:9px;padding:13px 10px}.stat strong{font-size:27px}}
+@media(max-width:1080px){.dashboard-grid{grid-template-columns:minmax(0,1fr)}.dashboard-side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.dashboard-side>.card{min-width:0}.featured-card{grid-row:span 2}}
+@media(max-width:900px){.sidebar{flex-basis:78px;min-height:100vh;padding:18px 10px}.side-brand{justify-content:center;padding:0;margin-bottom:18px}.side-brand>div:not(.side-logo){display:none}.sidebar .nav{font-size:0;text-align:center;padding:12px 5px}.sidebar .nav i{font-size:19px}.sidebar-bottom{margin-top:auto}.side-network>div,.side-contract,.side-tagline,.sidebar-bottom #logout{display:none}.main{padding:22px 20px;min-height:100vh}.dashboard-side{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.app-shell{display:block}.sidebar{display:none}.main{padding:16px;min-height:100vh}.topbar{align-items:flex-start;gap:12px;flex-direction:column}.college-brand{max-width:100%;flex-wrap:wrap}.dashboard-grid,.dashboard-side{display:grid;grid-template-columns:minmax(0,1fr)}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat{min-width:0}.stat small{overflow-wrap:anywhere}.welcome{height:auto;min-height:100px;padding:16px}.welcome-art{display:none}.feature-actions{flex-wrap:wrap}.feature-actions>*{flex:1 1 auto}.dashboard-side>.featured-card{grid-row:auto}}
